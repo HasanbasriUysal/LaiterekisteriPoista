@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -15,8 +15,9 @@ namespace Laitekirjasto
 {
     // LUOKKAMÄÄRITYKSET
     // =================
-    
+
     // Yleinen laiteluokka, yliluokka tietokoneille, tableteille ja puhelimille
+    [Serializable]
     class Device
     {
         // Kentät ja ominaisuudet
@@ -124,6 +125,7 @@ namespace Laitekirjasto
 
     // Tietokoneiden luokka, perii ominaisuuksia ja metodeja laiteluokasta Device
 
+    [Serializable]
     class Computer : Device
     {
         
@@ -139,6 +141,7 @@ namespace Laitekirjasto
     }
 
     // Tablettien luokka, perii laiteluokan
+    [Serializable]
     class Tablet : Device
     {
         // Kentät ja ominaisuudet
@@ -180,11 +183,13 @@ namespace Laitekirjasto
             // Määritellään binääridatan muodostaja serialisointia varte
             IFormatter formatter = new BinaryFormatter();
 
-            // Määritellään file stream tietokoneiden tietojen tallennusta varten
+            // Määritellään file stream tietokoneiden tietojen vektorimuotoista tallennusta varten -> huono ratkaisu
             Stream writeStream = new FileStream("ComputerData.dat", FileMode.Create, FileAccess.Write);
 
-            // Määritellään file stream tietokoneiden tietojen lukemista varten
+            // Määritellään toinen file stream pinotallenusta varten
+            Stream stackWriteStream = new FileStream("ComputerStack.dat" , FileMode.Create, FileAccess.Write);
 
+            
 
             // Luodaan vektorit ja laskurit niiden alkioille
             Computer[] computers = new Computer[10];
@@ -327,9 +332,50 @@ namespace Laitekirjasto
                     Console.WriteLine("Tietokonevektorissa on " + computers.Length + " alkiota");
 
                     Console.WriteLine("Pinossa on nyt " + computerStack.Count + " tietokonetta");
+
+
+                    // Tallennetaan koneiden tiedot vektorina tiedostoon serialisoimalla
+
+                    formatter.Serialize(writeStream, computers);
+                    writeStream.Close();
+
+                    // Tallennetaan koneiden tidot pinomuodossa tiedostoon
+                    formatter.Serialize(stackWriteStream, computerStack);
+                    stackWriteStream.Close();   
+
+                    // Määritellään file stream tietokoneiden tietojen lukemista varten
+
+                    Stream readStream = new FileStream("ComputerData.dat", FileMode.Open, FileAccess.Read);
+
+                    Computer[] savedComputers;
+                    
+                    savedComputers = (Computer[])formatter.Deserialize(readStream);
+
+                    readStream.Close();
+
+                    Stream readStackStream = new FileStream("ComputerStack.dat", FileMode.Open, FileAccess.Read);
+
+                    Stack<Computer> savedStack;
+                    savedStack = (Stack<Computer>)formatter.Deserialize(readStackStream); 
+                    readStackStream.Close();
+
+                    // Tulostetaan ruudulle vektorina tallennettun ensimmäisen koneen nimi
+                    Console.WriteLine("Levylle on tallennettu " + savedComputers.Length + " koneen tiedot");
+                    Console.WriteLine(savedComputers[0].Name);
+                    savedComputers[0].CalculateWarrantyEndingDate();
+
+                    // Jos luetaan indeksi, jossa koneen tiedot puuttuvat (null) sovellus kaatuu -> vektorin käyttö ei ole järkevää
+
+                    // Pinoon tallennetaan vain todellisuudessa syötetyt koneet, voidaan lukea koko pino silmukassa
+
+                    foreach (var item in savedStack)
+                    {
+                        Console.WriteLine("Koneen " + item.Name + " takuu päättyy");
+                        item.CalculateWarrantyEndingDate();
+                    }
+
                     break;
 
-                    // Tallennetaan koneiden tiedot tiedostoon serialisoimalla
 
 
                 }
